@@ -32,7 +32,11 @@ shinyUI(
                                                 escape(item.nome) + '</div>';
                                        }
                                      }"))),
-
+        selectizeInput(
+          'secao_cnae', 'Atividade econômica do participante (CNAE):',
+          choices = "", multiple = TRUE
+        ),
+        
         sliderInput("min_frequency", "Frequência mínima de coparticipação:",
                     min = 5, max = 100, value = 30, ticks = FALSE),
         strong("Filtrar:"),

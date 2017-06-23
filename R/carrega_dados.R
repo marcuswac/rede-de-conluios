@@ -76,3 +76,13 @@ carrega_dados_ceis <- function(file = "data/20170614_CEIS.csv") {
 carrega_dados_inidoneas_pb <- function(file = "data/inidoneas_pb.csv") {
   return(read_csv(file))
 }
+
+carrega_dados_cnae <- function(file = "data/cnpj_cep.txt") {
+  return(read_delim(file, "|", trim_ws = TRUE, quote = "",
+                    locale = locale(encoding = "latin1")))
+}
+
+carrega_dados_participantes_stats_com_cnae <- function(
+  file = "data/participantes_stats_com_cnae.csv") {
+  return(read_csv(file))
+}

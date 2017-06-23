@@ -15,9 +15,15 @@ source("R/carrega_dados.R")
 
 coparticipacoes <- suppressMessages(carrega_dados_coparticipacoes())
 inidoneas <- suppressMessages(carrega_dados_inidoneas_pb())
-participantes_stats <- suppressMessages(carrega_dados_participantes_stats()) %>%
-  mutate(idoneidade = if_else(nu_cpfcnpj %in% inidoneas$nu_cpfcnpj,
-                              "inidônea", "regular"))
+#participantes_stats <- suppressMessages(carrega_dados_participantes_stats()) %>%
+  #mutate(idoneidade = if_else(nu_cpfcnpj %in% inidoneas$nu_cpfcnpj,
+  #                            "inidônea", "regular"))
+participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
+  mutate(idoneidade = if_else(nu_cpfcnpj %in% inidoneas$nu_cpfcnpj, "inidônea",
+                              "regular"),
+         secao_cnae = if_else(!is.na(DescricaoSecao), DescricaoSecao,
+                             "INDEFINIDO")) %>%
+  select(1:4, idoneidade, secao_cnae)
 
 function(input, output, session) {
 
@@ -35,12 +41,19 @@ function(input, output, session) {
     if (!is.null(input$empresa) && input$empresa != "") {
       participantes_filt <- participantes_filt %>%
         filter(grepl(empresa, str_c(nu_cpfcnpj, toupper(nome)), fixed = TRUE))
-    } else if (!is.null(input$filt_inidoneas) && input$filt_inidoneas) {
-    # Encontra empresas inidoneas, se nao tiver filtro por CNPJ ou nome
-      participantes_filt <- participantes_filt %>%
-        filter(idoneidade != "regular")
+    } else {
+      # Encontra empresas por seção do CNAE
+      if (!is.null(input$secao_cnae) && input$secao_cnae != "") {
+        participantes_filt <- participantes_filt %>%
+          filter(secao_cnae %in% input$secao_cnae)
+      }
+      # Encontra empresas inidoneas, se nao tiver filtro por CNPJ ou nome
+      if (!is.null(input$filt_inidoneas) && input$filt_inidoneas) {
+        participantes_filt <- participantes_filt %>%
+          filter(idoneidade != "regular")
+      }
     }
-
+    
     # aplica filtro de empresas
     if (nrow(participantes_filt) > 0) {
       coparticipacoes_filt <- coparticipacoes_filt %>%
@@ -61,11 +74,11 @@ function(input, output, session) {
       mutate(group = ifelse(prop_vencedoras < .25, "perdeu muito", "normal"),
              node_id = paste(nome, " (", nu_cpfcnpj, ") Venceu ",
                              round(prop_vencedoras * n_licitacoes),
-                             " de ", n_licitacoes, ")", sep = ""),
+                             " de ", n_licitacoes, sep = ""),
             node_size = 30 * prop_vencedoras) %>%
       arrange(desc(idoneidade)) %>%
       as.data.frame()
-
+    
     cnpjs_filt <- participantes_nodes$nu_cpfcnpj
 
     coparticipacoes_links <- coparticipacoes_filt %>%
@@ -87,6 +100,10 @@ function(input, output, session) {
   })
 
   updateSelectizeInput(session, "empresa", choices = participantes_stats,
+                       server = TRUE)
+  
+  secoes_cnae <- participantes_stats$secao_cnae %>% unique() %>% sort()
+  updateSelectizeInput(session, "secao_cnae", choices = secoes_cnae,
                        server = TRUE)
 
   visualiza_conluios <- reactive({
