@@ -15,9 +15,6 @@ source("R/carrega_dados.R")
 
 coparticipacoes <- suppressMessages(carrega_dados_coparticipacoes())
 inidoneas <- suppressMessages(carrega_dados_inidoneas_pb())
-#participantes_stats <- suppressMessages(carrega_dados_participantes_stats()) %>%
-  #mutate(idoneidade = if_else(nu_cpfcnpj %in% inidoneas$nu_cpfcnpj,
-  #                            "inidônea", "regular"))
 participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
   mutate(idoneidade = if_else(nu_cpfcnpj %in% inidoneas$nu_cpfcnpj, "inidônea",
                               "regular"),
