@@ -27,3 +27,10 @@ Vá até o diretório raiz do projeto e rode:
 scripts/download_and_uncompress_tce_data.sh
 ```
 
+## Executar aplicação
+
+Para executar a aplicação e acessar de um browser localmente, rode:
+
+```
+Rscript run_app.R
+```
