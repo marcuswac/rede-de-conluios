@@ -7,15 +7,15 @@
 #    http://shiny.rstudio.com/
 #
 
-library(shiny)
-library(htmlwidgets)
+library(dplyr, warn.conflicts =  FALSE, quietly = TRUE,verbose = FALSE)
+library(htmlwidgets, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(shiny, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 
-source("R/visualiza_coparticipacoes.R")
 source("R/carrega_dados.R")
 
-coparticipacoes <- carrega_dados_coparticipacoes()
-inidoneas <- carrega_dados_inidoneas_pb()
-participantes_stats <- carrega_dados_participantes_stats() %>%
+coparticipacoes <- suppressMessages(carrega_dados_coparticipacoes())
+inidoneas <- suppressMessages(carrega_dados_inidoneas_pb())
+participantes_stats <- suppressMessages(carrega_dados_participantes_stats()) %>%
   mutate(idoneidade = if_else(nu_cpfcnpj %in% inidoneas$nu_cpfcnpj,
                               "inidônea", "regular"))
 

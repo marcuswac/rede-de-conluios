@@ -1,5 +1,5 @@
-library(networkD3)
-library(dplyr)
+library(networkD3, quietly = TRUE, verbose = FALSE)
+library(dplyr, quietly = TRUE, verbose = FALSE)
 
 source("R/carrega_dados.R")
 

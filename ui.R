@@ -1,7 +1,7 @@
-library(shiny)
-library(shinythemes)
-library(htmlwidgets)
-library(networkD3)
+library(htmlwidgets, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(networkD3, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(shiny, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(shinythemes, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 
 shinyUI(
   navbarPage(

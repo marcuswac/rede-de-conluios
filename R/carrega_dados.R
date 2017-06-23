@@ -1,7 +1,7 @@
-library(purrr)
-library(dplyr)
-library(stringr)
-library(readr)
+library(dplyr, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(purrr, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(readr, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(stringr, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 
 # os dados de licitacao do TCE possuem quebras de linha. tem que fazer esta
 # gambiarra para carrega-los
