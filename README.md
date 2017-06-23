@@ -2,6 +2,8 @@
 
 Análise da coparticipação de empresas em licitações na Paraíba.
 
+A aplicação pode ser acessada em: https://marcuswac.shinyapps.io/conluios/
+
 ## Dependências
 
 - [*R*](https://cran.r-project.org/) >= 3.3
