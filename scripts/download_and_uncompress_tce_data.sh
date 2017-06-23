@@ -1,4 +1,7 @@
+#!/bin/bash
+
 cd data/
+
 wget https://dados.tce.pb.gov.br/TCE-PB-SAGRES-Licitacao_Esfera_Municipal.txt.gz
 gzip -d TCE-PB-SAGRES-Licitacao_Esfera_Municipal.txt.gz
 
