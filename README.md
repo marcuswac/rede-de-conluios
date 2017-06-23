@@ -1,6 +1,6 @@
-# rede-de-conluios
+# Rede de conluios
 
-Analise de coparticipação de empresas em licitações.
+Análise da coparticipação de empresas em licitações na Paraíba.
 
 ## Dependências
 
@@ -18,7 +18,7 @@ Rscript instala_pacotes.R
 ### Dados do TCE
 
 Para atualizar os dados das licitações e gerar novamente as estatísticas
-de coparticipações, você deve baixar os dados no site do TCE.
+de coparticipações, você deve baixar os dados no site do TCE-PB.
 Vá até o diretório raiz do projeto e rode:
 
 ```
