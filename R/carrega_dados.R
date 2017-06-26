@@ -84,8 +84,10 @@ carrega_dados_inidoneas_pb <- function(file = "data/inidoneas_pb.csv") {
 }
 
 carrega_dados_cnae <- function(file = "data/cnpj_cep.txt") {
-  return(read_delim(file, "|", trim_ws = TRUE, quote = "",
-                    locale = locale(encoding = "latin1")))
+  dados <- read_delim(file, "|", trim_ws = TRUE, quote = "",
+                      locale = locale(encoding = "latin1")) %>%
+    distinct()
+  return(dados) 
 }
 
 carrega_dados_participantes_stats_com_cnae <- function(
