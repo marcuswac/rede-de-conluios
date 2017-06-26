@@ -27,17 +27,23 @@ read_csv_from_tce <- function(file_name, field_sep = "|", line_sep = "\n") {
 
 carrega_dados_licitacao <- function(
   file = "data/TCE-PB-SAGRES-Licitacao_Esfera_Municipal.txt") {
-  return(read_csv_from_tce(file))
+  data <- read_delim(file, delim = "|") %>%
+    mutate(tp_Licitacao = as.character(tp_Licitacao))
+  return(data)
 }
 
 carrega_dados_propostas <- function(
   file = "data/TCE-PB-SAGRES-Propostas_Licitacao_Esfera_Municipal.txt") {
-  return(read_delim(file, delim = "|"))
+  data <- read_delim(file, delim = "|") %>%
+    mutate(tp_licitacao = as.character(tp_licitacao))
+  return(data)
 }
 
 carrega_dados_participantes <- function(
   file = "data/TCE-PB-SAGRES-Participantes_Licitacao_Esfera_Municipal.txt") {
-  return(read_delim(file, delim = "|"))
+  data <- read_delim(file, delim = "|") %>%
+    mutate(tp_licitacao = as.character(tp_licitacao))
+  return(data)
 }
 
 carrega_dados_coparticipacoes <- function(
