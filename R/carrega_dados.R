@@ -87,7 +87,7 @@ carrega_dados_cnae <- function(file = "data/cnpj_cep.txt") {
   dados <- read_delim(file, "|", trim_ws = TRUE, quote = "",
                       locale = locale(encoding = "latin1")) %>%
     distinct()
-  return(dados) 
+  return(dados)
 }
 
 carrega_dados_participantes_stats_com_cnae <- function(

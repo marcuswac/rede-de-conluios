@@ -7,7 +7,7 @@ library(readr)
 source("R/carrega_dados.R")
 
 find_all_pairs <- function(x) {
-  combn(x, 2, simplify = FALSE) %>%
+  combn(sort(x), 2, simplify = FALSE) %>%
     map_df(~ data_frame(p1 = .[[1]], p2 = .[[2]]))
 }
 
@@ -59,13 +59,23 @@ gera_participantes_stats <- function(output = "data/participantes_stats.csv") {
     group_by(nu_cpfcnpj) %>%
     summarise(nome = first(no_participante),
               n_licitacoes = first(n_licitacoes),
-              prop_vencedoras = first(n_vencedora) / n_licitacoes)
+              n_vencedora = first(n_vencedora))
 
   if (is.character(output)) {
     write_csv(participantes_stats, output)
   }
 
   return(participantes_stats)
+}
+
+gera_participantes_stats_com_cnae <- function(
+  output = "data/participantes_stats_com_cnae.csv") {
+
+  participantes_cnae <- carrega_dados_participantes_stats() %>%
+    left_join(carrega_dados_cnae(), by = c("nu_cpfcnpj" = "nrcnpj"))
+  write_csv(participantes_cnae, output)
+
+  return(participantes_cnae)
 }
 
 gera_inidoneas_pb <- function(output = "data/inidoneas_pb.csv") {
@@ -81,14 +91,4 @@ gera_inidoneas_pb <- function(output = "data/inidoneas_pb.csv") {
   }
 
   return(inidoneas_df)
-}
-
-gera_participantes_stats_com_cnae <- function(
-  output = "data/participantes_stats_com_cnae.csv") {
-
-  participantes_cnae <- carrega_dados_participantes_stats() %>%
-  left_join(carrega_dados_cnae(), by = c("nu_cpfcnpj" = "nrcnpj"))
-  write_csv(participantes_cnae, output)
-
-  return(participantes_cnae)
 }

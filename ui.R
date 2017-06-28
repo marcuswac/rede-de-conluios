@@ -2,10 +2,11 @@ library(htmlwidgets, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(networkD3, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(shiny, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(shinythemes, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(DT, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 
 shinyUI(
   navbarPage(
-    "# Rede de conluios",
+    "Rede de conluios",
     theme = shinytheme("cerulean"),
     tabPanel("Licitações PB",
       titlePanel("Coparticipação de empresas em licitações na Paraíba"),
@@ -18,9 +19,9 @@ shinyUI(
       hr(),
       sidebarPanel(width = 3,
         h3("Filtros"),
-        selectizeInput("empresa", "CNPJ ou Nome do participante:", choice = "",
-          width = "100%",
-          options = list(maxOptions = 1000,
+        selectizeInput("empresa_filt", "CNPJ ou Nome do participante:",
+                       choice = "", width = "100%",
+                       options = list(maxOptions = 1000,
                          valueField = "nu_cpfcnpj",
                          labelField = "nome",
                          searchField = c("nome", "nu_cpfcnpj"),
@@ -33,10 +34,10 @@ shinyUI(
                                        }
                                      }"))),
         selectizeInput(
-          'secao_cnae', 'Atividade econômica do participante (CNAE):',
+          "secao_cnae", "Atividade econômica do participante (CNAE):",
           choices = "", multiple = TRUE
         ),
-        
+
         sliderInput("min_frequency", "Frequência mínima de coparticipação:",
                     min = 5, max = 100, value = 30, ticks = FALSE),
         strong("Filtrar:"),
@@ -44,7 +45,16 @@ shinyUI(
                       value = FALSE)
       ),
       mainPanel(width = 9,
-        forceNetworkOutput("conluios_plot", width = "100%", height = "700px")
+        tabsetPanel(id = "conluios_tabs",
+          tabPanel("Gráfico", value = "conluios_graph_tab",
+                   forceNetworkOutput("conluios_plot", width = "100%",
+                                      height = "600px")
+          ),
+          tabPanel("Informações", value = "conluios_info_tab",
+                   uiOutput("participante_info"),
+                   DT::dataTableOutput("participante_table")
+          )
+        )
       )
     )
   )
