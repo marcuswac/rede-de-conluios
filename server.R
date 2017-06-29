@@ -45,7 +45,7 @@ function(input, output, session) {
     # Encontra empresa por CNPJ ou nome
     if (!is.null(nome_cnpj) && nome_cnpj != "") {
       participantes_filt <- participantes_filt %>%
-        filter(grepl(nome_cnpj, str_c(nu_cpfcnpj, toupper(nome)), fixed = TRUE))
+        filter(nome_cnpj == nu_cpfcnpj)
     } else {
       # Encontra empresas por seção do CNAE
       if (!is.null(input$secao_cnae) && input$secao_cnae != "") {
@@ -74,13 +74,21 @@ function(input, output, session) {
         filter(nu_cpfcnpj %in% cnpjs_filt)
     }
 
+    CAT_VITORIAS <- c("intermediária", "venceu pouco (< 25%)",
+                      "venceu muito (> 75%)")
+
     participantes_nodes <- participantes_filt %>%
       ungroup() %>%
       mutate(prop_vencedoras = n_vencedora / n_licitacoes,
-             group = ifelse(prop_vencedoras < .25, "perdeu muito", "normal"),
+             cat_vitorias = factor(
+               ifelse(prop_vencedoras < .25, CAT_VITORIAS[2],
+                      if_else(prop_vencedoras > .75, CAT_VITORIAS[3],
+                              CAT_VITORIAS[1])), levels = CAT_VITORIAS),
              node_id = paste(nome, " (CNPJ: ", nu_cpfcnpj, ")", sep = ""),
-             node_size = 20 * prop_vencedoras) %>%
-      arrange(desc(idoneidade)) %>%
+             node_size = 20 * prop_vencedoras,
+             idoneidade = factor(idoneidade,
+                                 levels = c("regular", "inidônea"))) %>%
+      arrange_(input$node_group) %>%
       as.data.frame()
 
     cnpjs_filt <- participantes_nodes$nu_cpfcnpj
@@ -130,6 +138,8 @@ function(input, output, session) {
 
   visualiza_conluios <- reactive({
     dados <- filtra_dados()
+    grupo_node <- if_else(!is.na(input$node_group) && input$node_group != "",
+                         input$node_group, "idoneidade")
 
     # O nonce força a mudança de estado quando o mesmo nó é clicado de novo
     notify_node_clicked <- "Shiny.onInputChange('node_clicked', {
@@ -140,12 +150,14 @@ function(input, output, session) {
     forceNetwork(Links = dados$coparticipacoes_links,
                  Nodes = dados$participantes_nodes, Source = "source",
                  Target = "target", Value = "value", NodeID = "node_id",
-                 Nodesize = "node_size", Group = "idoneidade", legend = TRUE,
+                 Nodesize = "node_size", Group = grupo_node, legend = TRUE,
                  zoom = TRUE, opacity = 0.8, fontSize = 12,
                  colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"),
                  charge = -15, clickAction = notify_node_clicked,
                  linkDistance = 50)
-  })
+  }) %>%
+    debounce(1000) # adiciona delay para re-gerar grafico
+
 
   updateSelectizeInput(session, "empresa_filt", choices = participantes_stats,
                        server = TRUE)
@@ -183,7 +195,10 @@ function(input, output, session) {
     updateTabItems(session, "tabs", selected = "info_tab")
   })
 
-  output$conluios_plot <- renderForceNetwork(visualiza_conluios())
+  output$conluios_plot <- renderForceNetwork({
+    visualiza_conluios()
+  })
+
 
   output$participante_info <- renderUI({
     participante_cnpj <- reactive_values$participante_cnpj
@@ -208,12 +223,14 @@ function(input, output, session) {
         hr(),
         h4(strong("Tabela de coparticipações")))
   })
-  
+
   output$participante_table <- DT::renderDataTable(
     DT::datatable(
       get_coparticipantes(reactive_values$participante_cnpj),
       options = list(pageLength = 20,
-                     language = list(url = "http://cdn.datatables.net/plug-ins/\\1.10.11/\\i18n/Portuguese-Brasil.json")),
+                     language = list(
+                       url ="http://cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json")
+      ),
       colnames = c("Nome" = "nome",
                    "CNPJ" = "nu_cpfcnpj",
                    "Qtd. coparticipacoes" = "n_coparticipacoes",

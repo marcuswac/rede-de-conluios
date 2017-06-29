@@ -18,22 +18,28 @@ shinyUI(
         menuItem("Filtros:", icon = icon("filter"))
       ),
      selectizeInput("empresa_filt", "CNPJ ou nome do participante:",
-                    choice = "", width = "100%",
-                    options = list(maxOptions = 1000,
+                    choice = "",
+                    options = list(maxOptions = 50,
                                    valueField = "nu_cpfcnpj",
                                    labelField = "nome",
                                    searchField = c("nome", "nu_cpfcnpj"),
                                    render = I("{
                                               option: function(item, escape) {
-                                              return '<div>' +
-                                              escape(item.nu_cpfcnpj) +
-                                              ' - ' +
-                                              escape(item.nome) + '</div>';
+                                                return '<div>' +
+                                                  escape(item.nu_cpfcnpj) +
+                                                  ' - ' +
+                                                  escape(item.nome) + '</div>';
                                               }
                                               }"))),
-      selectizeInput(
-        "secao_cnae", "Atividade econômica do participante (seção CNAE):",
-        choices = "", multiple = TRUE),
+      selectizeInput("secao_cnae",
+                     "Atividade econômica do participante (seção CNAE):",
+                     choices = "", multiple = TRUE),
+      selectizeInput("node_group",
+                     "Agrupar (colorir) empresas por:",
+                     choices = c("Idoneidade" = "idoneidade",
+                                 "Atividade economica" = "secao_cnae",
+                                 "Vitorias em licitacoes" = "cat_vitorias"),
+                     selected = "idoneidade"),
       sliderInput("min_frequency", "Frequência mínima de coparticipação:",
                   min = 5, max = 100, value = 40, ticks = TRUE),
       checkboxInput("filt_inidoneas", label = "Empresas inidôneas",
