@@ -65,14 +65,15 @@ carrega_dados_tce <- function() {
 }
 
 carrega_dados_ceis <- function(file = "data/20170614_CEIS.csv") {
-  dados <- read_delim("data/20170614_CEIS.csv", delim = ";")
+  dados <- read_delim("data/20170614_CEIS.csv", delim = ";",
+                      locale = locale(encoding = "latin1"))
   colnames(dados) <- c("tipo_pessoa", "nu_cpfcnpj", "nome",
-                       "razao_social", "nome fantasia", "nu_processo",
+                       "razao_social", "nome_fantasia", "nu_processo",
                        "tipo_sancao", "data_inicio_sancao",
                        "data_final_sancao", "orgao_sancionador",
                        "uf_orgao_sancionador", "origem_info",
-                       "data_publicacao", "publicacao", "detalhamento",
-                       "abrangencia", "fundamentacao_legal",
+                       "data_origem_info", "data_publicacao", "publicacao",
+                       "detalhamento", "abrangencia", "fundamentacao_legal",
                        "descricao_fundamentacao_legal",
                        "data_transito_julgado", "complemento_orgao",
                        "contato_da_origem_info")

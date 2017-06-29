@@ -82,9 +82,9 @@ gera_inidoneas_pb <- function(output = "data/inidoneas_pb.csv") {
   participantes_df <- carrega_dados_participantes()
 
   inidoneas_df <- carrega_dados_ceis() %>%
-    select(nu_cpfcnpj, razao_social) %>%
-    filter(nu_cpfcnpj %in% participantes_df$nu_cpfcnpj) %>%
-    distinct()
+    group_by(nu_cpfcnpj) %>%
+    summarise(tipo_sancao = paste(unique(tipo_sancao), collapse = " / ")) %>%
+    filter(nu_cpfcnpj %in% participantes_df$nu_cpfcnpj)
 
   if (is.character(output)) {
     write_csv(inidoneas_df, output)

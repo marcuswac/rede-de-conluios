@@ -15,13 +15,18 @@ library(DT, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 source("R/carrega_dados.R")
 
 coparticipacoes <- suppressMessages(carrega_dados_coparticipacoes())
-inidoneas <- suppressMessages(carrega_dados_inidoneas_pb())
 participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
-  mutate(idoneidade = if_else(nu_cpfcnpj %in% inidoneas$nu_cpfcnpj, "inidônea",
+  left_join(carrega_dados_inidoneas_pb(), by = "nu_cpfcnpj") %>%
+  mutate(idoneidade = if_else(!is.na(tipo_sancao), "inidônea",
                               "regular"),
+         tipo_sancao = if_else(!is.na(tipo_sancao), tipo_sancao, "Nada consta"),
          secao_cnae = if_else(!is.na(DescricaoSecao), DescricaoSecao,
-                             "INDEFINIDA")) %>%
-  select(1:4, idoneidade, secao_cnae)
+                             "INDEFINIDA"),
+         subclasse_cnae = if_else(!is.na(DescricaoSubclasse),
+                                  DescricaoSubclasse, "INDEFINIDA")) %>%
+  select(nu_cpfcnpj, nome, n_licitacoes, n_vencedora, tipo_sancao, idoneidade,
+         secao_cnae, subclasse_cnae)
+secoes_cnae <- participantes_stats$secao_cnae %>% unique() %>% sort()
 
 function(input, output, session) {
 
@@ -73,9 +78,8 @@ function(input, output, session) {
       ungroup() %>%
       mutate(prop_vencedoras = n_vencedora / n_licitacoes,
              group = ifelse(prop_vencedoras < .25, "perdeu muito", "normal"),
-             node_id = paste(nome, " (", nu_cpfcnpj, ") Venceu ", n_vencedora,
-                             " de ", n_licitacoes, sep = ""),
-            node_size = 50 * prop_vencedoras) %>%
+             node_id = paste(nome, " (CNPJ: ", nu_cpfcnpj, ")", sep = ""),
+             node_size = 20 * prop_vencedoras) %>%
       arrange(desc(idoneidade)) %>%
       as.data.frame()
 
@@ -99,66 +103,6 @@ function(input, output, session) {
                 coparticipacoes_links = coparticipacoes_links))
   })
 
-  updateSelectizeInput(session, "empresa_filt", choices = participantes_stats,
-                       server = TRUE)
-
-  secoes_cnae <- participantes_stats$secao_cnae %>% unique() %>% sort()
-  updateSelectizeInput(session, "secao_cnae", choices = secoes_cnae,
-                       server = TRUE)
-
-  visualiza_conluios <- reactive({
-    dados <- filtra_dados()
-    notify_node_clicked <- 'Shiny.onInputChange("node_clicked", d.name)'
-
-    forceNetwork(Links = dados$coparticipacoes_links,
-                 Nodes = dados$participantes_nodes, Source = "source",
-                 Target = "target", Value = "value", NodeID = "nome",
-                 Nodesize = "node_size", Group = "idoneidade", legend = TRUE,
-                 zoom = TRUE, opacity = 0.8, fontSize = 12,
-                 colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"),
-                 charge = -15, clickAction = notify_node_clicked,
-                 linkDistance = 50)
-  })
-
-  output$conluios_plot <- renderForceNetwork(visualiza_conluios())
-
-  observeEvent(input$node_clicked, {
-    participante_nome <- input$node_clicked
-    participante <- participantes_stats %>%
-      filter(nome == participante_nome)
-    reactive_values$participante_cnpj <- participante$nu_cpfcnpj
-
-    updateSelectizeInput(session, "empresa_filt",
-                         selected = participante,
-                         choices = participantes_stats, server = TRUE)
-    updateTabsetPanel(session, "conluios_tabs", selected = "conluios_info_tab")
-  })
-
-  observeEvent(input$empresa_filt, {
-    reactive_values$participante_cnpj <- input$empresa_filt
-  })
-
-  output$participante_info <- renderUI({
-    participante_cnpj <- reactive_values$participante_cnpj
-    if (is.null(participante_cnpj) || participante_cnpj == "") {
-      return()
-    }
-    participante <- participantes_stats %>%
-      filter(nu_cpfcnpj == participante_cnpj)
-
-    div(id = "div_cnpj_info",
-        h4("Informações do participante"),
-        p(),
-        p(strong("Nome: "), participante$nome),
-        p(strong("CNPJ: "), participante_cnpj),
-        p(strong("Quantidade de licitações: "), participante$n_licitacoes),
-        p(strong("Quantidade de vitórias: "), participante$n_vencedora),
-        p(strong("Idoneidade: "), participante$idoneidade),
-        p(strong("Atividade econômica: "), participante$secao_cnae),
-        hr(),
-        h4("Tabela de coparticipações"))
-  })
-
   get_coparticipantes <- function(participante_cnpj) {
     if (is.null(participante_cnpj) || participante_cnpj == "") {
       return()
@@ -178,19 +122,101 @@ function(input, output, session) {
     coparticipantes <- coparticipacoes_filt %>%
       left_join(participantes_stats, by = "nu_cpfcnpj") %>%
       arrange(desc(n_coparticipacoes)) %>%
+      ungroup() %>%
       select("Nome" = nome,
              "CNPJ" = nu_cpfcnpj,
              "Qtd. coparticipacoes" = n_coparticipacoes,
              "Qtd. licitacoes" = n_licitacoes,
              "Qtd. vitorias" = n_vencedora,
-             "Idoneidade" = idoneidade,
-             "Atividade economica" = secao_cnae)
+             "Inidoneidade" = tipo_sancao,
+             "Atividade economica primaria" = subclasse_cnae)
 
     coparticipantes
   }
 
+  visualiza_conluios <- reactive({
+    dados <- filtra_dados()
+
+    # O nonce força a mudança de estado quando o mesmo nó é clicado de novo
+    notify_node_clicked <- "Shiny.onInputChange('node_clicked', {
+                              name: d.name,
+                              '.nonce': Math.random()
+                            })"
+
+    forceNetwork(Links = dados$coparticipacoes_links,
+                 Nodes = dados$participantes_nodes, Source = "source",
+                 Target = "target", Value = "value", NodeID = "node_id",
+                 Nodesize = "node_size", Group = "idoneidade", legend = TRUE,
+                 zoom = TRUE, opacity = 0.8, fontSize = 12,
+                 colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"),
+                 charge = -15, clickAction = notify_node_clicked,
+                 linkDistance = 50)
+  })
+
+  updateSelectizeInput(session, "empresa_filt", choices = participantes_stats,
+                       server = TRUE)
+
+  updateSelectizeInput(session, "secao_cnae", choices = secoes_cnae,
+                       server = TRUE)
+
+  observeEvent(input$empresa_filt, {
+    reactive_values$participante_cnpj <- input$empresa_filt
+  })
+
+  observeEvent(input$reset_input, {
+    updateSelectizeInput(session, "empresa_filt", selected = "")
+    updateSelectizeInput(session, "secao_cnae", selected = "")
+    updateSliderInput(session, "min_frequency", value = 40)
+    updateCheckboxInput(session, "filt_inidoneas", value = FALSE)
+  })
+
+  observeEvent(input$node_clicked, {
+    print(paste("Clicked", input$node_clicked$name))
+    participante_cnpj <- input$node_clicked$name %>%
+      str_split(fixed("(CNPJ: "), simplify = TRUE) %>%
+    getElement(2) %>%
+    str_split(fixed(")"), simplify = TRUE) %>%
+    getElement(1)
+
+    participante <- participantes_stats %>%
+      filter(nu_cpfcnpj == participante_cnpj)
+
+    reactive_values$participante_cnpj <- participante_cnpj
+
+    updateSelectizeInput(session, "empresa_filt",
+                         selected = participante,
+                         choices = participantes_stats, server = TRUE)
+    updateTabItems(session, "tabs", selected = "info_tab")
+  })
+
+  output$conluios_plot <- renderForceNetwork(visualiza_conluios())
+
+  output$participante_info <- renderUI({
+    participante_cnpj <- reactive_values$participante_cnpj
+    if (is.null(participante_cnpj) || participante_cnpj == "") {
+      return(div(id = "div_cnpj_info",
+                 p("Escolha uma empresa usando o filtro ou clicando em um nó
+                   do gráfico.")))
+    }
+    participante <- participantes_stats %>%
+      filter(nu_cpfcnpj == participante_cnpj)
+
+    div(id = "div_cnpj_info",
+        h4(strong("Informações do participante")),
+        p(),
+        p(strong("Nome: "), participante$nome),
+        p(strong("CNPJ: "), participante_cnpj),
+        p(strong("Quantidade de licitações: "), participante$n_licitacoes),
+        p(strong("Quantidade de vitórias: "), participante$n_vencedora),
+        p(strong("Inidoneidade: "), participante$tipo_sancao),
+        p(strong("Atividade econômica primária: "),
+          participante$subclasse_cnae),
+        hr(),
+        h4("Tabela de coparticipações"))
+  })
+
   output$participante_table <- DT::renderDataTable(
     DT::datatable(get_coparticipantes(reactive_values$participante_cnpj),
-                  options = list( pageLength = 20))
+                  options = list(pageLength = 20))
   )
 }
