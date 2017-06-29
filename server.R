@@ -119,19 +119,13 @@ function(input, output, session) {
       return()
     }
 
-    coparticipantes <- coparticipacoes_filt %>%
+    coparticipacoes <- coparticipacoes_filt %>%
       left_join(participantes_stats, by = "nu_cpfcnpj") %>%
       arrange(desc(n_coparticipacoes)) %>%
       ungroup() %>%
-      select("Nome" = nome,
-             "CNPJ" = nu_cpfcnpj,
-             "Qtd. coparticipacoes" = n_coparticipacoes,
-             "Qtd. licitacoes" = n_licitacoes,
-             "Qtd. vitorias" = n_vencedora,
-             "Inidoneidade" = tipo_sancao,
-             "Atividade economica primaria" = subclasse_cnae)
-
-    coparticipantes
+      select(nome, nu_cpfcnpj, n_coparticipacoes, n_licitacoes, n_vencedora,
+             tipo_sancao, subclasse_cnae)
+    coparticipacoes
   }
 
   visualiza_conluios <- reactive({
@@ -202,7 +196,7 @@ function(input, output, session) {
       filter(nu_cpfcnpj == participante_cnpj)
 
     div(id = "div_cnpj_info",
-        h4(strong("Informações do participante")),
+        h3(strong("Informações do participante")),
         p(),
         p(strong("Nome: "), participante$nome),
         p(strong("CNPJ: "), participante_cnpj),
@@ -212,11 +206,22 @@ function(input, output, session) {
         p(strong("Atividade econômica primária: "),
           participante$subclasse_cnae),
         hr(),
-        h4("Tabela de coparticipações"))
+        h4(strong("Tabela de coparticipações")))
   })
-
+  
   output$participante_table <- DT::renderDataTable(
-    DT::datatable(get_coparticipantes(reactive_values$participante_cnpj),
-                  options = list(pageLength = 20))
+    DT::datatable(
+      get_coparticipantes(reactive_values$participante_cnpj),
+      options = list(pageLength = 20,
+                     language = list(url = "http://cdn.datatables.net/plug-ins/\\1.10.11/\\i18n/Portuguese-Brasil.json")),
+      colnames = c("Nome" = "nome",
+                   "CNPJ" = "nu_cpfcnpj",
+                   "Qtd. coparticipacoes" = "n_coparticipacoes",
+                   "Qtd. licitacoes" = "n_licitacoes",
+                   "Qtd. vitorias" = "n_vencedora",
+                   "Inidoneidade" = "tipo_sancao",
+                   "Atividade economica primaria" = "subclasse_cnae"
+      )
+    )
   )
 }
