@@ -16,6 +16,8 @@ source("R/carrega_dados.R")
 
 coparticipacoes <- suppressMessages(carrega_dados_coparticipacoes())
 participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
+  filter(nu_cpfcnpj %in% coparticipacoes$p1 |
+           nu_cpfcnpj %in% coparticipacoes$p2) %>%
   left_join(carrega_dados_inidoneas_pb(), by = "nu_cpfcnpj") %>%
   mutate(idoneidade = if_else(!is.na(tipo_sancao), "inidônea",
                               "regular"),
@@ -172,8 +174,9 @@ function(input, output, session) {
   observeEvent(input$reset_input, {
     updateSelectizeInput(session, "empresa_filt", selected = "")
     updateSelectizeInput(session, "secao_cnae", selected = "")
-    updateSliderInput(session, "min_frequency", value = 40)
+    updateSliderInput(session, "min_frequency", value = 50)
     updateCheckboxInput(session, "filt_inidoneas", value = FALSE)
+    updateSelectInput(session, "node_group", selected = "idoneidade")
   })
 
   observeEvent(input$node_clicked, {
@@ -224,12 +227,20 @@ function(input, output, session) {
         h4(strong("Tabela de coparticipações")))
   })
 
+  output$participante_table_ui <- renderUI({
+    if (!is.na(input$empresa_filt) && input$empresa_filt != "") {
+      DT::dataTableOutput("participante_table")
+    } else {
+      return("")
+    }
+  })
+
   output$participante_table <- DT::renderDataTable(
     DT::datatable(
       get_coparticipantes(reactive_values$participante_cnpj),
       options = list(pageLength = 20,
                      language = list(
-                       url ="http://cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json")
+                       url = "http://cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json")
       ),
       colnames = c("Nome" = "nome",
                    "CNPJ" = "nu_cpfcnpj",
