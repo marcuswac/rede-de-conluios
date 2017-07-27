@@ -7,10 +7,10 @@
 #    http://shiny.rstudio.com/
 #
 
+library(DT, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(dplyr, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(htmlwidgets, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(shiny, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
-library(DT, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 
 source("R/carrega_dados.R")
 
@@ -207,8 +207,8 @@ function(input, output, session) {
     participante_cnpj <- reactive_values$participante_cnpj
     if (is.null(participante_cnpj) || participante_cnpj == "") {
       return(div(id = "div_cnpj_info",
-                 p("Escolha uma empresa usando o filtro ou clicando em um nó
-                   do gráfico.")))
+                 p("Escolha uma empresa usando o filtro de CNPJ ou nome ao lado,
+                    ou clicando em um nó do gráfico.")))
     }
     participante <- participantes_stats %>%
       filter(nu_cpfcnpj == participante_cnpj)
@@ -218,8 +218,11 @@ function(input, output, session) {
         p(),
         p(strong("Nome: "), participante$nome),
         p(strong("CNPJ: "), participante_cnpj),
-        p(strong("Quantidade de licitações: "), participante$n_licitacoes),
-        p(strong("Quantidade de vitórias: "), participante$n_vencedora),
+        p(strong("Vitórias em licitações: "),
+          participante$n_vencedora, " de ",
+          participante$n_licitacoes, " participações (",
+          round(100 * participante$n_vencedora / participante$n_licitacoes, 2),
+          "% )"),
         p(strong("Inidoneidade: "), participante$tipo_sancao),
         p(strong("Atividade econômica primária: "),
           participante$subclasse_cnae),
@@ -239,6 +242,7 @@ function(input, output, session) {
     DT::datatable(
       get_coparticipantes(reactive_values$participante_cnpj),
       options = list(pageLength = 20,
+                     lengthMenu = c(20, 50, 100, 500, 1000),
                      language = list(
                        url = "http://cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json")
       ),
@@ -252,4 +256,20 @@ function(input, output, session) {
       )
     )
   )
+  
+  observeEvent(input$print, {
+    js$winprint()
+  })
+  
+  observe({
+    query <- parseQueryString(session$clientData$url_search)
+    cnpj <- query[["cnpj"]]
+    if (!is.null(cnpj)) {
+      print(cnpj)
+      updateTabItems(session, "tabs", selected = "info_tab")
+      updateSelectizeInput(session, "empresa_filt",
+                           selected = cnpj,
+                           choices = participantes_stats, server = TRUE)
+    }
+  })
 }

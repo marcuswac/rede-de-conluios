@@ -1,11 +1,16 @@
+library(DT, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(htmlwidgets, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(networkD3, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(shiny, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(shinyBS, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
-library(shinythemes, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(shinydashboard, warn.conflicts = FALSE, quietly = TRUE,
         verbose = FALSE)
-library(DT, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(shinyjs, warn.conflicts = FALSE, quietly = TRUE, verbose = FALSE)
+library(shinythemes, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+
+jsCode <- 'shinyjs.winprint = function(){
+  window.print();
+}'
 
 shinyUI(
   dashboardPage(
@@ -13,7 +18,7 @@ shinyUI(
     dashboardSidebar(
       sidebarMenu(id = "tabs",
         menuItem("Gráfico", tabName = "graph_tab", icon = icon("spinner")),
-        menuItem("Tabela", tabName = "info_tab",
+        menuItem("Relatórios", tabName = "info_tab",
                  icon = icon("table")),
         menuItem("Filtros:", icon = icon("filter"), startExpanded = TRUE,
           selectizeInput(
@@ -64,7 +69,7 @@ shinyUI(
           bsPopover("q1", "<strong>Descrição do gráfico</strong>",
                     "<p>Cada nó (círculo) representa uma empresa. As arestas\\
                      ligam empresas que participaram das mesmas licitações,\\
-                     com a frequênca mínima escolhida.\\
+                     com a frequência mínima escolhida.\\
                      Arestas mais grossas indicam maior coparticipação.\\
                      Empresas inidôneas (CEIS) estão em laranja. Clique\\
                      em um nó para obter mais informações da empresa.\\
@@ -74,10 +79,15 @@ shinyUI(
                               height = "800px")
         ),
         tabItem("info_tab",
-                 uiOutput("participante_info"),
-                 uiOutput("participante_table_ui")
+                useShinyjs(),
+                extendShinyjs(text = jsCode),
+                fluidRow(
+                  column(8, uiOutput("participante_info")),
+                  column(4, actionButton("print", "Imprimir"), style="padding:20px;")
+                ),
+                uiOutput("participante_table_ui")
         )
-        )
+      )
     )
   )
 )
