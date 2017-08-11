@@ -7,6 +7,7 @@ library(shinydashboard, warn.conflicts = FALSE, quietly = TRUE,
         verbose = FALSE)
 library(shinyjs, warn.conflicts = FALSE, quietly = TRUE, verbose = FALSE)
 library(shinythemes, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(V8, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 
 jsCode <- 'shinyjs.winprint = function(){
   window.print();

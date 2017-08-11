@@ -115,7 +115,7 @@ function(input, output, session) {
 
   get_coparticipantes <- function(participante_cnpj) {
     if (is.null(participante_cnpj) || participante_cnpj == "") {
-      return()
+      return(data.frame())
     }
     participante <- participantes_stats %>%
       filter(nu_cpfcnpj == participante_cnpj)
@@ -126,7 +126,7 @@ function(input, output, session) {
                 n_coparticipacoes = frequency)
 
     if (nrow(coparticipacoes_filt) == 0) {
-      return()
+      return(data.frame())
     }
 
     coparticipacoes <- coparticipacoes_filt %>%
@@ -134,7 +134,7 @@ function(input, output, session) {
       arrange(desc(n_coparticipacoes)) %>%
       ungroup() %>%
       select(nome, nu_cpfcnpj, n_coparticipacoes, n_licitacoes, n_vencedora,
-             tipo_sancao, subclasse_cnae)
+             tipo_sancao)
     coparticipacoes
   }
 
@@ -153,10 +153,10 @@ function(input, output, session) {
                  Nodes = dados$participantes_nodes, Source = "source",
                  Target = "target", Value = "value", NodeID = "node_id",
                  Nodesize = "node_size", Group = grupo_node, legend = TRUE,
-                 zoom = TRUE, opacity = 0.8, fontSize = 12,
+                 zoom = TRUE, opacity = 1, fontSize = 12,
                  colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"),
                  charge = -15, clickAction = notify_node_clicked,
-                 linkDistance = 50)
+                 linkDistance = 50, opacityNoHover = 0.3)
   }) %>%
     debounce(1000) # adiciona delay para re-gerar grafico
 
@@ -244,15 +244,17 @@ function(input, output, session) {
       options = list(pageLength = 20,
                      lengthMenu = c(20, 50, 100, 500, 1000),
                      language = list(
-                       url = "http://cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json")
+                       url = "http://cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json"),
+                     "dom" = 'T<"clear">lBfrtip',
+                     buttons = list('copy', 'csv', 'excel')
       ),
+      extensions = "Buttons",
       colnames = c("Nome" = "nome",
                    "CNPJ" = "nu_cpfcnpj",
                    "Qtd. coparticipacoes" = "n_coparticipacoes",
                    "Qtd. licitacoes" = "n_licitacoes",
                    "Qtd. vitorias" = "n_vencedora",
-                   "Inidoneidade" = "tipo_sancao",
-                   "Atividade economica primaria" = "subclasse_cnae"
+                   "Inidoneidade" = "tipo_sancao"
       )
     )
   )
