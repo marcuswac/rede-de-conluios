@@ -1,6 +1,6 @@
+library(dplyr)
 library(plumber)
 source("R/carrega_dados.R")
-source("R/analisa_conluios.R")
 
 coparticipacoes <- suppressMessages(carrega_dados_coparticipacoes())
 participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
@@ -16,6 +16,32 @@ participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
                                   DescricaoSubclasse, "INDEFINIDA")) %>%
   select(nu_cpfcnpj, nome, n_licitacoes, n_vencedora, tipo_sancao, idoneidade,
          secao_cnae, subclasse_cnae)
+
+get_coparticipantes <- function(participante_cnpj, participantes_stats,
+                                coparticipacoes) {
+  if (is.null(participante_cnpj) || participante_cnpj == "") {
+    return(data.frame())
+  }
+  participante <- participantes_stats %>%
+    filter(nu_cpfcnpj == participante_cnpj)
+  
+  coparticipacoes_filt <- coparticipacoes %>%
+    filter(p1 == participante_cnpj | p2 == participante_cnpj) %>%
+    transmute(nu_cpfcnpj = ifelse(p1 != participante_cnpj, p1, p2),
+              n_coparticipacoes = frequency)
+  
+  if (nrow(coparticipacoes_filt) == 0) {
+    return(data.frame())
+  }
+  
+  coparticipacoes <- coparticipacoes_filt %>%
+    left_join(participantes_stats, by = "nu_cpfcnpj") %>%
+    arrange(desc(n_coparticipacoes)) %>%
+    ungroup() %>%
+    select(nome, nu_cpfcnpj, n_coparticipacoes, n_licitacoes, n_vencedora,
+           tipo_sancao)
+  coparticipacoes
+}
 
 #* Retorna coparticipacoes de empresas em licitacoes
 #* @get /coparticipacoes
