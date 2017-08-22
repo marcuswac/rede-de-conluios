@@ -4,7 +4,7 @@ library(dplyr)
 library(multidplyr)
 library(readr)
 
-source("R/carrega_dados.R")
+source("R/common.R")
 
 find_all_pairs <- function(cnpjs, vencedoras) {
   idx <- order(cnpjs)

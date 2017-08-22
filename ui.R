@@ -58,6 +58,9 @@ shinyUI(
             checkboxInput(
               "filt_inidoneas", label = "Empresas inidôneas", value = FALSE
              ),
+            checkboxInput(
+              "filt_mesmo_socio", label = "Mesmo sócio", value = FALSE
+            ),
             actionButton("reset_input", "Limpar filtros")
     ))),
     dashboardBody(

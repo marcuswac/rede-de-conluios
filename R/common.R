@@ -95,3 +95,40 @@ carrega_dados_participantes_stats_com_cnae <- function(
   file = "data/participantes_stats_com_cnae.csv") {
   return(read_csv(file))
 }
+
+carrega_dados_receitaws_pb <- function(file = "data/cnpj-info-pb.csv") {
+  return(read_csv(file))
+}
+
+carrega_dados_socios_pb <- function(
+  file = "data/cnpj_socios_licitacoes_pb.csv") {
+  return(read_csv(file))
+}
+
+get_coparticipantes <- function(participante_cnpj, coparticipacoes) {
+  if (is.null(participante_cnpj) || participante_cnpj == "") {
+    return(data.frame())
+  }
+  participante <- participantes_stats %>%
+    filter(nu_cpfcnpj == participante_cnpj)
+  
+  coparticipacoes_filt <- coparticipacoes %>%
+    filter(nu_cpfcnpj_1 == participante_cnpj |
+             nu_cpfcnpj_2 == participante_cnpj) %>%
+    mutate(
+      nu_cpfcnpj_coparticipante = ifelse(nu_cpfcnpj_1 == participante_cnpj,
+                                         nu_cpfcnpj_2, nu_cpfcnpj_1),
+      n_coparticipacoes,
+      n_vitorias_participante = ifelse(nu_cpfcnpj_1 == participante_cnpj,
+                                       n_vitorias_1, n_vitorias_2),
+      n_vitorias_coparticipante = ifelse(nu_cpfcnpj_1 == participante_cnpj,
+                                         n_vitorias_2, n_vitorias_1)
+    ) %>%
+    select(-nu_cpfcnpj_1, -nu_cpfcnpj_2)
+  
+  if (nrow(coparticipacoes_filt) == 0) {
+    return(data.frame())
+  }
+  
+  return(coparticipacoes_filt)
+}

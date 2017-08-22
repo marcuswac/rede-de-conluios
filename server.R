@@ -10,17 +10,30 @@
 library(DT, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(dplyr, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(htmlwidgets, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(purrr, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(shiny, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 
 source("R/carrega_dados.R")
+source("R/common.R")
+
+tem_mesmo_socio <- function(nu_cpfcnpj_1, nu_cpfcnpj_2, socios_list) {
+  map2_lgl(nu_cpfcnpj_1, nu_cpfcnpj_2,
+           function(x, y) {
+             socios_nomes_1 <- socios_list[[x]]$socio_nome
+             socios_nomes_2 <- socios_list[[y]]$socio_nome
+             ifelse(is.character(socios_nomes_1) && is.character(socios_nomes_2),
+                    any(map_lgl(socios_nomes_1, ~ any(.x == socios_nomes_2))),
+                    FALSE)
+           }
+  )
+}
 
 coparticipacoes <- suppressMessages(carrega_dados_coparticipacoes())
 participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
-  filter(nu_cpfcnpj %in% coparticipacoes$p1 |
-           nu_cpfcnpj %in% coparticipacoes$p2) %>%
+  filter(nu_cpfcnpj %in% coparticipacoes$nu_cpfcnpj_1 |
+           nu_cpfcnpj %in% coparticipacoes$nu_cpfcnpj_2) %>%
   left_join(carrega_dados_inidoneas_pb(), by = "nu_cpfcnpj") %>%
-  mutate(idoneidade = if_else(!is.na(tipo_sancao), "inidônea",
-                              "regular"),
+  mutate(idoneidade = if_else(!is.na(tipo_sancao), "inidônea", "regular"),
          tipo_sancao = if_else(!is.na(tipo_sancao), tipo_sancao, "Nada consta"),
          secao_cnae = if_else(!is.na(DescricaoSecao), DescricaoSecao,
                              "INDEFINIDA"),
@@ -29,6 +42,13 @@ participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
   select(nu_cpfcnpj, nome, n_licitacoes, n_vencedora, tipo_sancao, idoneidade,
          secao_cnae, subclasse_cnae)
 secoes_cnae <- participantes_stats$secao_cnae %>% unique() %>% sort()
+print("loading socios")
+socios <- carrega_dados_socios_pb() %>%
+  select(nu_cpfcnpj, socio_nome, socio_nome_legal) %>%
+  filter(!is.na(socio_nome))
+
+#print("loading socios list")
+#socios_list <- split(socios, socios$nu_cpfcnpj)
 
 function(input, output, session) {
 
@@ -41,8 +61,14 @@ function(input, output, session) {
 
     # Filtra frequencia minima de coparticipacoes
     coparticipacoes_filt <- coparticipacoes %>%
-      mutate(p1 = as.character(p1), p2 = as.character(p2)) %>%
-      filter(frequency >= min_frequency)
+      mutate(nu_cpfcnpj_1 = as.character(nu_cpfcnpj_1),
+             nu_cpfcnpj_2 = as.character(nu_cpfcnpj_2)) %>%
+      filter(n_coparticipacoes >= min_frequency)
+    
+    if (!is.null(input$filt_mesmo_socio) && input$filt_mesmo_socio) {
+      coparticipacoes_filt <- coparticipacoes_filt %>%
+        filter(n_mesmo_socio > 0)
+    }
 
     # Encontra empresa por CNPJ ou nome
     if (!is.null(nome_cnpj) && nome_cnpj != "") {
@@ -64,12 +90,13 @@ function(input, output, session) {
     # aplica filtro de empresas
     if (nrow(participantes_filt) > 0) {
       coparticipacoes_filt <- coparticipacoes_filt %>%
-        filter(p1 %in% participantes_filt$nu_cpfcnpj |
-               p2 %in% participantes_filt$nu_cpfcnpj)
+        filter(nu_cpfcnpj_1 %in% participantes_filt$nu_cpfcnpj |
+                 nu_cpfcnpj_2 %in% participantes_filt$nu_cpfcnpj)
     }
 
     if (nrow(coparticipacoes_filt) > 0) {
-      cnpjs_filt <- c(coparticipacoes_filt$p1, coparticipacoes_filt$p2) %>%
+      cnpjs_filt <- c(coparticipacoes_filt$nu_cpfcnpj_1,
+                      coparticipacoes_filt$nu_cpfcnpj_2) %>%
         unique() %>%
         sort()
       participantes_filt <- participantes_stats %>%
@@ -97,9 +124,9 @@ function(input, output, session) {
 
     coparticipacoes_links <- coparticipacoes_filt %>%
       rowwise() %>%
-      transmute(source = which(p1 == cnpjs_filt) - 1,
-                target = which(p2 == cnpjs_filt) - 1,
-                value = frequency / min_frequency)
+      transmute(source = which(nu_cpfcnpj_1 == cnpjs_filt) - 1,
+                target = which(nu_cpfcnpj_2 == cnpjs_filt) - 1,
+                value = n_coparticipacoes / min_frequency)
 
     # se empresas filtradas nao possuem frequencia minima de coparticipacao,
     # mostrar apenas as empresas filtradas, sem as arestas
@@ -112,32 +139,78 @@ function(input, output, session) {
     return(list(participantes_nodes = participantes_nodes,
                 coparticipacoes_links = coparticipacoes_links))
   })
-
-  get_coparticipantes <- function(participante_cnpj) {
+  
+  get_porcentagem_str <- function(x, total, digits = 1) {
+    ifelse(is.numeric(x) & is.numeric(total) & total > 0,
+           paste0("(", round(100 * x / total, digits), "%)"),
+           "")
+  }
+  
+  get_coparticipantes <- function(participante_cnpj, coparticipacoes) {
     if (is.null(participante_cnpj) || participante_cnpj == "") {
       return(data.frame())
     }
     participante <- participantes_stats %>%
       filter(nu_cpfcnpj == participante_cnpj)
-
+    
     coparticipacoes_filt <- coparticipacoes %>%
-      filter(p1 == participante_cnpj | p2 == participante_cnpj) %>%
-      transmute(nu_cpfcnpj = ifelse(p1 != participante_cnpj, p1, p2),
-                n_coparticipacoes = frequency)
+      filter(nu_cpfcnpj_1 == participante_cnpj |
+             nu_cpfcnpj_2 == participante_cnpj) %>%
+      mutate(
+        nu_cpfcnpj_coparticipante = ifelse(nu_cpfcnpj_1 == participante_cnpj,
+          nu_cpfcnpj_2, nu_cpfcnpj_1),
+        n_coparticipacoes,
+        n_vitorias_participante = ifelse(nu_cpfcnpj_1 == participante_cnpj,
+                                          n_vitorias_1, n_vitorias_2),
+        n_vitorias_coparticipante = ifelse(nu_cpfcnpj_1 == participante_cnpj,
+                                           n_vitorias_2, n_vitorias_1)
+      ) %>%
+      select(-nu_cpfcnpj_1, -nu_cpfcnpj_2)
 
     if (nrow(coparticipacoes_filt) == 0) {
       return(data.frame())
     }
-
-    coparticipacoes <- coparticipacoes_filt %>%
-      left_join(participantes_stats, by = "nu_cpfcnpj") %>%
-      arrange(desc(n_coparticipacoes)) %>%
-      ungroup() %>%
-      select(nome, nu_cpfcnpj, n_coparticipacoes, n_licitacoes, n_vencedora,
-             tipo_sancao)
-    coparticipacoes
+    
+    return(coparticipacoes_filt)
   }
 
+  get_coparticipantes_table <- function(participante_cnpj, coparticipacoes,
+                                        participantes_stats, socios) {
+    coparticipantes <- get_coparticipantes(participante_cnpj, coparticipacoes)
+    if (nrow(coparticipantes) == 0) {
+      return(data.frame())
+    }
+    print(coparticipantes)
+
+    coparticipantes %>%
+      left_join(participantes_stats,
+                by = c("nu_cpfcnpj_coparticipante" = "nu_cpfcnpj")) %>%
+      left_join(socios,
+                by = c("nu_cpfcnpj_coparticipante" = "nu_cpfcnpj")) %>%
+      mutate(socio_nome = ifelse(is.na(socio_nome_legal), socio_nome,
+                                 socio_nome_legal)) %>%
+      group_by(nome, nu_cpfcnpj_coparticipante, n_coparticipacoes,
+               n_vitorias_participante, n_vitorias_coparticipante,
+               n_mesmo_socio) %>%
+      summarise(
+        socios_nomes = str_c(socio_nome, collapse = ", ")
+      ) %>%
+      arrange(desc(n_coparticipacoes)) %>%
+      ungroup() %>%
+      mutate(
+        n_vitorias_participante = paste(
+          n_vitorias_participante,
+          get_porcentagem_str(n_vitorias_participante, n_coparticipacoes)
+        ),
+        n_vitorias_coparticipante = paste(
+          n_vitorias_coparticipante,
+          get_porcentagem_str(n_vitorias_coparticipante, n_coparticipacoes)
+        ),
+        mesmo_socio = ifelse(n_mesmo_socio > 0, "Sim", "Não")
+      ) %>%
+      select(-n_mesmo_socio)
+  }
+  
   visualiza_conluios <- reactive({
     dados <- filtra_dados()
     grupo_node <- if_else(!is.na(input$node_group) && input$node_group != "",
@@ -176,6 +249,7 @@ function(input, output, session) {
     updateSelectizeInput(session, "secao_cnae", selected = "")
     updateSliderInput(session, "min_frequency", value = 50)
     updateCheckboxInput(session, "filt_inidoneas", value = FALSE)
+    updateCheckboxInput(session, "filt_mesmo_socio", value = FALSE)
     updateSelectInput(session, "node_group", selected = "idoneidade")
   })
 
@@ -212,17 +286,21 @@ function(input, output, session) {
     }
     participante <- participantes_stats %>%
       filter(nu_cpfcnpj == participante_cnpj)
-
+    
+    participante_socios <- filter(socios, nu_cpfcnpj == participante_cnpj)
+      
     div(id = "div_cnpj_info",
         h3(strong("Informações do participante")),
         p(),
         p(strong("Nome: "), participante$nome),
         p(strong("CNPJ: "), participante_cnpj),
+        p(strong("Sócios: "), str_c(participante_socios$socio_nome,
+                                    collapse = ", ")),
         p(strong("Vitórias em licitações: "),
           participante$n_vencedora, " de ",
-          participante$n_licitacoes, " participações (",
-          round(100 * participante$n_vencedora / participante$n_licitacoes, 2),
-          "% )"),
+          participante$n_licitacoes, " participações ",
+          get_porcentagem_str(participante$n_vencedora,
+                              participante$n_licitacoes)),
         p(strong("Inidoneidade: "), participante$tipo_sancao),
         p(strong("Atividade econômica primária: "),
           participante$subclasse_cnae),
@@ -237,25 +315,33 @@ function(input, output, session) {
       return("")
     }
   })
-
+  
   output$participante_table <- DT::renderDataTable(
-    DT::datatable(
-      get_coparticipantes(reactive_values$participante_cnpj),
-      options = list(pageLength = 20,
-                     lengthMenu = c(20, 50, 100, 500, 1000),
-                     language = list(
-                       url = "http://cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json"),
-                     "dom" = 'T<"clear">lBfrtip',
-                     buttons = list('copy', 'csv', 'excel')
+    formatStyle(
+      DT::datatable(
+        get_coparticipantes_table(reactive_values$participante_cnpj,
+                                  coparticipacoes, participantes_stats, socios),
+        rownames = FALSE,
+        options = list(pageLength = 20,
+                       lengthMenu = c(20, 50, 100, 500, 1000),
+                       language = list(
+                         url = "http://cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json"),
+                       "dom" = 'T<"clear">lBfrtip',
+                       buttons = list('copy', 'csv', 'excel')
+                       #,
+                       #columnDefs = list(list(targets = 7, visible = FALSE))
+        ),
+        extensions = "Buttons",
+        colnames = c("Nome do coparticipante" = "nome",
+                     "CNPJ" = "nu_cpfcnpj_coparticipante",
+                     "Qtd. coparticipacoes" = "n_coparticipacoes",
+                     "Vitorias do participante" = "n_vitorias_participante",
+                     "Vitorias do coparticipante" = "n_vitorias_coparticipante",
+                     "Socios do coparticipante" = "socios_nomes",
+                     "Mesmo socio" = "mesmo_socio")
       ),
-      extensions = "Buttons",
-      colnames = c("Nome" = "nome",
-                   "CNPJ" = "nu_cpfcnpj",
-                   "Qtd. coparticipacoes" = "n_coparticipacoes",
-                   "Qtd. licitacoes" = "n_licitacoes",
-                   "Qtd. vitorias" = "n_vencedora",
-                   "Inidoneidade" = "tipo_sancao"
-      )
+      columns = 7, target = "row",
+      backgroundColor = styleEqual("Sim", "#ffcccc")
     )
   )
   

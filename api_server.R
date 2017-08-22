@@ -7,4 +7,3 @@ server_port <- ifelse(is.na(argv[2]), 3839, as.integer(argv[2]))
 
 r <- plumb("R/conluios_api.R")
 r$run(host = server_host, port = server_port)
-

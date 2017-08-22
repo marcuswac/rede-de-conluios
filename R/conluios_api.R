@@ -1,11 +1,13 @@
 library(dplyr)
 library(plumber)
+
 source("R/carrega_dados.R")
+source("R/common.R")
 
 coparticipacoes <- suppressMessages(carrega_dados_coparticipacoes())
 participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
-  filter(nu_cpfcnpj %in% coparticipacoes$p1 |
-           nu_cpfcnpj %in% coparticipacoes$p2) %>%
+  filter(nu_cpfcnpj %in% coparticipacoes$nu_cpfcnpj_1 |
+           nu_cpfcnpj %in% coparticipacoes$nu_cpfcnpj_2) %>%
   left_join(carrega_dados_inidoneas_pb(), by = "nu_cpfcnpj") %>%
   mutate(idoneidade = if_else(!is.na(tipo_sancao), "inidônea",
                               "regular"),
@@ -26,8 +28,10 @@ get_coparticipantes <- function(participante_cnpj, participantes_stats,
     filter(nu_cpfcnpj == participante_cnpj)
   
   coparticipacoes_filt <- coparticipacoes %>%
-    filter(p1 == participante_cnpj | p2 == participante_cnpj) %>%
-    transmute(nu_cpfcnpj = ifelse(p1 != participante_cnpj, p1, p2),
+    filter(nu_cpfcnpj_1 == participante_cnpj |
+             nu_cpfcnpj_2 == participante_cnpj) %>%
+    transmute(nu_cpfcnpj = ifelse(nu_cpfcnpj_1 != participante_cnpj,
+                                  nu_cpfcnpj_1, nu_cpfcnpj_2),
               n_coparticipacoes = frequency)
   
   if (nrow(coparticipacoes_filt) == 0) {
@@ -39,7 +43,7 @@ get_coparticipantes <- function(participante_cnpj, participantes_stats,
     arrange(desc(n_coparticipacoes)) %>%
     ungroup() %>%
     select(nome, nu_cpfcnpj, n_coparticipacoes, n_licitacoes, n_vencedora,
-           tipo_sancao)
+           n_mesmo_socio, tipo_sancao)
   coparticipacoes
 }
 
