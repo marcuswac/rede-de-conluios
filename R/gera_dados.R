@@ -31,7 +31,7 @@ conta_mesmo_socio <- function(nu_cpfcnpj_1, nu_cpfcnpj_2, socios_list) {
 }
 
 gera_coparticipacoes <- function(n_cores = 4,
-                                 output = "data/coparticipacoes4.csv") {
+                                 output = "data/coparticipacoes.csv") {
 
   participantes_df <- carrega_dados_participantes()
   propostas_stats <- carrega_dados_propostas() %>%

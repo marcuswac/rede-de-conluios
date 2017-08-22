@@ -1,7 +1,6 @@
 library(dplyr)
 library(plumber)
 
-source("R/carrega_dados.R")
 source("R/common.R")
 
 coparticipacoes <- suppressMessages(carrega_dados_coparticipacoes())
@@ -9,7 +8,7 @@ participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
   filter(nu_cpfcnpj %in% coparticipacoes$nu_cpfcnpj_1 |
            nu_cpfcnpj %in% coparticipacoes$nu_cpfcnpj_2) %>%
   left_join(carrega_dados_inidoneas_pb(), by = "nu_cpfcnpj") %>%
-  mutate(idoneidade = if_else(!is.na(tipo_sancao), "inidônea",
+  mutate(idoneidade = if_else(!is.na(tipo_sancao), "inidonea",
                               "regular"),
          tipo_sancao = if_else(!is.na(tipo_sancao), tipo_sancao, "Nada consta"),
          secao_cnae = if_else(!is.na(DescricaoSecao), DescricaoSecao,
@@ -19,33 +18,33 @@ participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
   select(nu_cpfcnpj, nome, n_licitacoes, n_vencedora, tipo_sancao, idoneidade,
          secao_cnae, subclasse_cnae)
 
-get_coparticipantes <- function(participante_cnpj, participantes_stats,
-                                coparticipacoes) {
-  if (is.null(participante_cnpj) || participante_cnpj == "") {
-    return(data.frame())
-  }
-  participante <- participantes_stats %>%
-    filter(nu_cpfcnpj == participante_cnpj)
-  
-  coparticipacoes_filt <- coparticipacoes %>%
-    filter(nu_cpfcnpj_1 == participante_cnpj |
-             nu_cpfcnpj_2 == participante_cnpj) %>%
-    transmute(nu_cpfcnpj = ifelse(nu_cpfcnpj_1 != participante_cnpj,
-                                  nu_cpfcnpj_1, nu_cpfcnpj_2),
-              n_coparticipacoes = frequency)
-  
-  if (nrow(coparticipacoes_filt) == 0) {
-    return(data.frame())
-  }
-  
-  coparticipacoes <- coparticipacoes_filt %>%
-    left_join(participantes_stats, by = "nu_cpfcnpj") %>%
-    arrange(desc(n_coparticipacoes)) %>%
-    ungroup() %>%
-    select(nome, nu_cpfcnpj, n_coparticipacoes, n_licitacoes, n_vencedora,
-           n_mesmo_socio, tipo_sancao)
-  coparticipacoes
-}
+# get_coparticipantes <- function(participante_cnpj, participantes_stats,
+#                                 coparticipacoes) {
+#   if (is.null(participante_cnpj) || participante_cnpj == "") {
+#     return(data.frame())
+#   }
+#   participante <- participantes_stats %>%
+#     filter(nu_cpfcnpj == participante_cnpj)
+#   
+#   coparticipacoes_filt <- coparticipacoes %>%
+#     filter(nu_cpfcnpj_1 == participante_cnpj |
+#              nu_cpfcnpj_2 == participante_cnpj) %>%
+#     transmute(nu_cpfcnpj = ifelse(nu_cpfcnpj_1 != participante_cnpj,
+#                                   nu_cpfcnpj_1, nu_cpfcnpj_2),
+#               n_coparticipacoes = frequency)
+#   
+#   if (nrow(coparticipacoes_filt) == 0) {
+#     return(data.frame())
+#   }
+#   
+#   coparticipacoes <- coparticipacoes_filt %>%
+#     left_join(participantes_stats, by = "nu_cpfcnpj") %>%
+#     arrange(desc(n_coparticipacoes)) %>%
+#     ungroup() %>%
+#     select(nome, nu_cpfcnpj, n_coparticipacoes, n_licitacoes, n_vencedora,
+#            n_mesmo_socio, tipo_sancao)
+#   coparticipacoes
+# }
 
 #* Retorna coparticipacoes de empresas em licitacoes
 #* @get /coparticipacoes
@@ -62,9 +61,25 @@ function(cnpj = NA) {
   cnpj <- str_extract_all(cnpj, "\\d", simplify =  T) %>%
     str_c(collapse = "")
       
-  participante_info <- filter(participantes_stats, nu_cpfcnpj == cnpj)
-  coparticipacoes <- get_coparticipantes(cnpj, participantes_stats,
-                                         coparticipacoes)
+  participante_info <- filter(participantes_stats, nu_cpfcnpj == cnpj) %>%
+    left_join(socios, by = c("nu_cpfcnpj")) %>%
+    mutate(socio_nome = ifelse(is.na(socio_nome_legal), socio_nome,
+                               socio_nome_legal)) %>%
+    group_by(nome, nu_cpfcnpj, n_licitacoes, n_vencedora) %>%
+    summarise(#socios_nomes = str_c(socio_nome, collapse = ", "),
+              socios_nomes = list(socio_nome),
+              sancao_ceis = first(tipo_sancao))
+  
+  coparticipantes <- get_coparticipantes(cnpj, coparticipacoes) %>%
+    left_join(participantes_stats,
+              by = c("nu_cpfcnpj_coparticipante" = "nu_cpfcnpj")) %>%
+    ungroup() %>%
+    select(nome, nu_cpfcnpj = nu_cpfcnpj_coparticipante, n_coparticipacoes,
+           n_vitorias_participante = n_vitorias_1,
+           n_vitorias_coparticipante = n_vitorias_2,
+           n_mesmo_socio) %>%
+    arrange(desc(n_coparticipacoes))
+  
   list(participante_info = participante_info,
-       coparticipacoes = coparticipacoes)
+       coparticipantes = coparticipantes)
 }
