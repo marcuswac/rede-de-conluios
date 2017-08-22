@@ -11,12 +11,12 @@ participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
   left_join(carrega_dados_inidoneas_pb(), by = "nu_cpfcnpj") %>%
   mutate(idoneidade = if_else(!is.na(tipo_sancao), "inidonea",
                               "regular"),
-         tipo_sancao = if_else(!is.na(tipo_sancao), tipo_sancao, "Nada consta"),
+         sancao_ceis = if_else(!is.na(tipo_sancao), tipo_sancao, "Nada consta"),
          secao_cnae = if_else(!is.na(DescricaoSecao), DescricaoSecao,
                               "INDEFINIDA"),
          subclasse_cnae = if_else(!is.na(DescricaoSubclasse),
                                   DescricaoSubclasse, "INDEFINIDA")) %>%
-  select(nu_cpfcnpj, nome, n_licitacoes, n_vencedora, tipo_sancao, idoneidade,
+  select(nu_cpfcnpj, nome, n_licitacoes, n_vencedora, sancao_ceis, idoneidade,
          secao_cnae, subclasse_cnae)
 
 socios <- carrega_dados_socios_pb() %>%
@@ -42,10 +42,9 @@ function(cnpj = NA) {
     left_join(socios, by = c("nu_cpfcnpj")) %>%
     mutate(socio_nome = ifelse(is.na(socio_nome_legal), socio_nome,
                                socio_nome_legal)) %>%
-    group_by(nome, nu_cpfcnpj, n_licitacoes, n_vencedora) %>%
+    group_by(nome, nu_cpfcnpj, n_licitacoes, n_vencedora, sancao_ceis) %>%
     summarise(#socios_nomes = str_c(socio_nome, collapse = ", "),
-              socios_nomes = list(socio_nome),
-              sancao_ceis = first(tipo_sancao))
+              socios_nomes = list(socio_nome))
   
   coparticipantes <- get_coparticipantes(cnpj, coparticipacoes) %>%
     left_join(participantes_stats,
