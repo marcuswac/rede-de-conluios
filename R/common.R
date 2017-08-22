@@ -109,8 +109,6 @@ get_coparticipantes <- function(participante_cnpj, coparticipacoes) {
   if (is.null(participante_cnpj) || participante_cnpj == "") {
     return(data.frame())
   }
-  participante <- participantes_stats %>%
-    filter(nu_cpfcnpj == participante_cnpj)
   
   coparticipacoes_filt <- coparticipacoes %>%
     filter(nu_cpfcnpj_1 == participante_cnpj |

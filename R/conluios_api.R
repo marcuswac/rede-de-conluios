@@ -34,6 +34,8 @@ function(cnpj = NA) {
     )
   }
   
+  print(head(participantes_stats))
+  
   # removing symbols
   cnpj <- str_extract_all(cnpj, "\\d", simplify =  T) %>%
     str_c(collapse = "")
@@ -43,8 +45,7 @@ function(cnpj = NA) {
     mutate(socio_nome = ifelse(is.na(socio_nome_legal), socio_nome,
                                socio_nome_legal)) %>%
     group_by(nome, nu_cpfcnpj, n_licitacoes, n_vencedora, sancao_ceis) %>%
-    summarise(#socios_nomes = str_c(socio_nome, collapse = ", "),
-              socios_nomes = list(socio_nome))
+    summarise(socios_nomes = list(socio_nome))
   
   coparticipantes <- get_coparticipantes(cnpj, coparticipacoes) %>%
     left_join(participantes_stats,
