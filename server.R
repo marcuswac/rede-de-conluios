@@ -297,7 +297,8 @@ function(input, output, session) {
   })
 
   output$participante_table_ui <- renderUI({
-    if (!is.na(input$empresa_filt) && input$empresa_filt != "") {
+    if (!is.null(reactive_values$participante_cnpj) &&
+        reactive_values$participante_cnpj != "") {
       DT::dataTableOutput("participante_table")
     } else {
       return("")
