@@ -64,6 +64,7 @@ shinyUI(
             actionButton("reset_input", "Limpar filtros")
     ))),
     dashboardBody(
+      tags$head(includeScript("google-analytics.js")),
       tabItems(
         tabItem("graph_tab",
           h4(strong("Coparticipação de empresas em licitações na Paraíba"),
