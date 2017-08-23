@@ -34,8 +34,6 @@ function(cnpj = NA) {
     )
   }
   
-  print(head(participantes_stats))
-  
   # removing symbols
   cnpj <- str_extract_all(cnpj, "\\d", simplify =  T) %>%
     str_c(collapse = "")

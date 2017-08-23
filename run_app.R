@@ -9,4 +9,5 @@ if (!is.na(argv[1])) {
 
 options(shiny.host = "0.0.0.0") # external access
 
+enableBookmarking("url")
 runApp(".")

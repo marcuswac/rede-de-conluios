@@ -37,29 +37,27 @@ shinyUI(
                                           escape(item.nome) + '</div>';
                                       }
                                       }"))),
-            selectizeInput(
-              "secao_cnae",
-              "Atividade econômica do participante (seção CNAE):",
-              choices = "", multiple = TRUE
+            checkboxGroupInput(
+              "filt_checkbox", "Mostrar apenas empresas:",
+              choiceNames = c("Com mesmo sócio", "Inidôneas"),
+              choiceValues = c("mesmo_socio", "inidoneas")
             ),
-            selectInput(
-              "node_group",
-               "Agrupar (colorir) por:",
-               choices = c("Idoneidade" = "idoneidade",
-                           "Atividade economica" = "secao_cnae",
-                           "Vitorias em licitacoes" = "cat_vitorias"),
-               selected = "idoneidade"
-             ),
             sliderInput(
               "min_frequency",
               "Frequência mínima de coparticipação:",
               min = 5, max = 100, value = 50, ticks = TRUE
             ),
-            checkboxInput(
-              "filt_inidoneas", label = "Empresas inidôneas", value = FALSE
-             ),
-            checkboxInput(
-              "filt_mesmo_socio", label = "Mesmo sócio", value = FALSE
+            selectizeInput(
+              "secao_cnae",
+              "Atividade econômica (CNAE):", choices = "", multiple = TRUE
+            ),
+            selectInput(
+              "node_group",
+              "Agrupar (colorir) por:",
+              choices = c("Idoneidade" = "idoneidade",
+                          "Atividade economica" = "secao_cnae",
+                          "Vitorias em licitacoes" = "cat_vitorias"),
+              selected = "idoneidade"
             ),
             actionButton("reset_input", "Limpar filtros")
     ))),

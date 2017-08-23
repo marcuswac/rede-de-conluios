@@ -64,7 +64,8 @@ function(input, output, session) {
              nu_cpfcnpj_2 = as.character(nu_cpfcnpj_2)) %>%
       filter(n_coparticipacoes >= min_frequency)
     
-    if (!is.null(input$filt_mesmo_socio) && input$filt_mesmo_socio) {
+    if (!is.null(input$filt_checkbox) &&
+        "mesmo_socio" %in% input$filt_checkbox) {
       coparticipacoes_filt <- coparticipacoes_filt %>%
         filter(n_mesmo_socio > 0)
     }
@@ -80,7 +81,7 @@ function(input, output, session) {
           filter(secao_cnae %in% input$secao_cnae)
       }
       # Encontra empresas inidoneas, se nao tiver filtro por CNPJ ou nome
-      if (!is.null(input$filt_inidoneas) && input$filt_inidoneas) {
+      if (!is.null(input$filt_checkbox) && "inidoneas" %in% input$filt_checkbox) {
         participantes_filt <- participantes_filt %>%
           filter(idoneidade != "regular")
       }
@@ -151,7 +152,6 @@ function(input, output, session) {
     if (nrow(coparticipantes) == 0) {
       return(data.frame())
     }
-    print(coparticipantes)
 
     coparticipantes %>%
       left_join(participantes_stats,
@@ -213,15 +213,33 @@ function(input, output, session) {
 
   observeEvent(input$empresa_filt, {
     reactive_values$participante_cnpj <- input$empresa_filt
+    if (input$empresa_filt != "") {
+      updateQueryString(str_c("?cnpj=", input$empresa_filt), mode = "push")
+    }
   })
-
+  
+  # observe({
+  #   # Trigger this observer every time an input changes
+  #   reactiveValuesToList(input)
+  #   session$doBookmark()
+  # })
+  # onBookmarked(function(url) {
+  #   updateQueryString(url)
+  # })
+  # 
+  # observeEvent(input$min_frequency, {
+  #   #updateQueryString(str_c("?min_frequency=", input$min_frequency),
+  #   #                  mode = "push")
+  # })
+  
   observeEvent(input$reset_input, {
     updateSelectizeInput(session, "empresa_filt", selected = "")
     updateSelectizeInput(session, "secao_cnae", selected = "")
     updateSliderInput(session, "min_frequency", value = 50)
-    updateCheckboxInput(session, "filt_inidoneas", value = FALSE)
-    updateCheckboxInput(session, "filt_mesmo_socio", value = FALSE)
+    updateCheckboxGroupInput(session, "filt_checkbox", selected = character(0))
     updateSelectInput(session, "node_group", selected = "idoneidade")
+    updateQueryString("?")
+    updateTabItems(session, "tabs", selected = "graph_tab")
   })
 
   observeEvent(input$node_clicked, {
@@ -237,9 +255,10 @@ function(input, output, session) {
 
     reactive_values$participante_cnpj <- participante_cnpj
 
-    updateSelectizeInput(session, "empresa_filt",
-                         selected = participante,
-                         choices = participantes_stats, server = TRUE)
+    #updateSelectizeInput(session, "empresa_filt",
+    #                     selected = participante,
+    #                     choices = participantes_stats, server = TRUE)
+    updateQueryString(str_c("?cnpj=", participante_cnpj), mode = "push")
     updateTabItems(session, "tabs", selected = "info_tab")
   })
 
@@ -292,9 +311,10 @@ function(input, output, session) {
       DT::datatable(
         get_coparticipantes_table(reactive_values$participante_cnpj,
                                   coparticipacoes, participantes_stats, socios),
-        rownames = FALSE,
+        rownames = FALSE, selection = "none",
         options = list(pageLength = 20,
-                       lengthMenu = c(20, 50, 100, 500, 1000),
+                       lengthMenu = list(c(20, 50, 100, -1),
+                                         list("20", "50", "100", "Tudo")),
                        language = list(
                          url = "http://cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json"),
                        "dom" = 'T<"clear">lBfrtip',
@@ -323,8 +343,7 @@ function(input, output, session) {
   observe({
     query <- parseQueryString(session$clientData$url_search)
     cnpj <- query[["cnpj"]]
-    if (!is.null(cnpj)) {
-      print(cnpj)
+    if (!is.null(cnpj) && cnpj != "") {
       updateTabItems(session, "tabs", selected = "info_tab")
       updateSelectizeInput(session, "empresa_filt",
                            selected = cnpj,
