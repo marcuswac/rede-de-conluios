@@ -210,7 +210,8 @@ function(input, output, session) {
 
   observeEvent(input$empresa_filt, {
     reactive_values$participante_cnpj <- input$empresa_filt
-    if (input$empresa_filt != "") {
+    query_cnpj <- parseQueryString(session$clientData$url_search)[["cnpj"]]
+    if (!(input$empresa_filt %in%  c("",  query_cnpj))) {
       updateQueryString(str_c("?cnpj=", input$empresa_filt), mode = "push")
     }
   })
