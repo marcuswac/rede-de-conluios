@@ -41,13 +41,10 @@ participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
   select(nu_cpfcnpj, nome, n_licitacoes, n_vencedora, tipo_sancao, idoneidade,
          secao_cnae, subclasse_cnae)
 secoes_cnae <- participantes_stats$secao_cnae %>% unique() %>% sort()
-print("loading socios")
 socios <- carrega_dados_socios_pb() %>%
   select(nu_cpfcnpj, socio_nome, socio_nome_legal) %>%
   filter(!is.na(socio_nome))
 
-#print("loading socios list")
-#socios_list <- split(socios, socios$nu_cpfcnpj)
 
 function(input, output, session) {
 
