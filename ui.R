@@ -15,7 +15,7 @@ jsCode <- 'shinyjs.winprint = function(){
 
 shinyUI(
   dashboardPage(
-    dashboardHeader(title = "Rede de conluios"),
+    dashboardHeader(title = tags$a(href='/', "Rede de conluios")),
     dashboardSidebar(
       sidebarMenu(id = "tabs",
         menuItem("Gráfico", tabName = "graph_tab", icon = icon("spinner")),
@@ -62,7 +62,10 @@ shinyUI(
             actionButton("reset_input", "Limpar filtros")
     ))),
     dashboardBody(
-      tags$head(includeScript("google-analytics.js")),
+      tags$head(
+        includeScript("google-analytics.js"),
+        tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
+      ),
       tabItems(
         tabItem("graph_tab",
           h4(strong("Coparticipação de empresas em licitações na Paraíba"),
