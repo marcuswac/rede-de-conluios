@@ -14,7 +14,7 @@ jsCode <- 'shinyjs.winprint = function(){
 }'
 
 shinyUI(
-  dashboardPage(
+  dashboardPage(title = "Rede de conluios",
     dashboardHeader(title = tags$a(href='/', "Rede de conluios")),
     dashboardSidebar(
       sidebarMenu(id = "tabs",
