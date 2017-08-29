@@ -176,6 +176,10 @@ function(input, output, session) {
         ),
         mesmo_socio = ifelse(n_mesmo_socio > 0, "Sim", "Não")
       ) %>%
+      rowwise() %>%
+      mutate(nu_cpfcnpj_coparticipante = as.character(
+        tags$a(href = paste0("/?cnpj=", nu_cpfcnpj_coparticipante),
+               nu_cpfcnpj_coparticipante))) %>%
       select(-n_mesmo_socio)
   }
   
@@ -317,9 +321,8 @@ function(input, output, session) {
                        language = list(
                          url = "http://cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json"),
                        "dom" = 'T<"clear">lBfrtip',
-                       buttons = list('copy', 'csv', 'excel')
-                       #,
-                       #columnDefs = list(list(targets = 7, visible = FALSE))
+                       buttons = list('copy', 'csv', 'excel')#,
+                       #columnDefs = list(list(visible = FALSE, targets = 7))
         ),
         extensions = "Buttons",
         colnames = c("Nome do coparticipante" = "nome",
@@ -328,7 +331,8 @@ function(input, output, session) {
                      "Vitorias do participante" = "n_vitorias_participante",
                      "Vitorias do coparticipante" = "n_vitorias_coparticipante",
                      "Socios do coparticipante" = "socios_nomes",
-                     "Mesmo socio" = "mesmo_socio")
+                     "Mesmo socio" = "mesmo_socio"),
+        escape = FALSE
       ),
       columns = 7, target = "row",
       backgroundColor = styleEqual("Sim", "#ffcccc")
