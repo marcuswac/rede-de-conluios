@@ -7,7 +7,8 @@ A aplicação pode ser acessada em: http://licitantes.info
 ## Dependências
 
 - [*R*](https://cran.r-project.org/) >= 3.3
-- *libv8*: `apt-get install libv8-dev`
+- *libv8* 
+  - `apt-get install libv8-dev`
 
 ### Pacotes R
 
