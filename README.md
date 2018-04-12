@@ -2,11 +2,12 @@
 
 Análise da coparticipação de empresas em licitações na Paraíba.
 
-A aplicação pode ser acessada em: https://marcuswac.shinyapps.io/conluios/
+A aplicação pode ser acessada em: http://licitantes.info 
 
 ## Dependências
 
 - [*R*](https://cran.r-project.org/) >= 3.3
+- *libv8*: `apt-get install libv8-dev`
 
 ### Pacotes R
 
