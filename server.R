@@ -10,24 +10,17 @@
 library(DT, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(dplyr, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(htmlwidgets, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(ggplot2, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(ggthemes, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
+library(plotly, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(purrr, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(shiny, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 
 source("R/common.R")
 
-tem_mesmo_socio <- function(nu_cpfcnpj_1, nu_cpfcnpj_2, socios_list) {
-  map2_lgl(nu_cpfcnpj_1, nu_cpfcnpj_2,
-           function(x, y) {
-             socios_nomes_1 <- socios_list[[x]]$socio_nome
-             socios_nomes_2 <- socios_list[[y]]$socio_nome
-             ifelse(is.character(socios_nomes_1) && is.character(socios_nomes_2),
-                    any(map_lgl(socios_nomes_1, ~ any(.x == socios_nomes_2))),
-                    FALSE)
-           }
-  )
-}
-
+# global data
 coparticipacoes <- suppressMessages(carrega_dados_coparticipacoes())
+
 participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
   filter(nu_cpfcnpj %in% coparticipacoes$nu_cpfcnpj_1 |
            nu_cpfcnpj %in% coparticipacoes$nu_cpfcnpj_2) %>%
@@ -40,12 +33,21 @@ participantes_stats <- carrega_dados_participantes_stats_com_cnae() %>%
                                   DescricaoSubclasse, "INDEFINIDA")) %>%
   select(nu_cpfcnpj, nome, n_licitacoes, n_vencedora, tipo_sancao, idoneidade,
          secao_cnae, subclasse_cnae)
+
 secoes_cnae <- participantes_stats$secao_cnae %>% unique() %>% sort()
+
 socios <- carrega_dados_socios_pb() %>%
   select(nu_cpfcnpj, socio_nome, socio_nome_legal) %>%
   filter(!is.na(socio_nome))
 
+participantes <- carrega_dados_participantes() %>%
+  select(nu_cpfcnpj, de_ugestora, nu_licitacao, de_tipolicitacao)
 
+licitacoes <- carrega_dados_licitacao()
+
+propostas <- carrega_dados_propostas()
+
+# main server function
 function(input, output, session) {
 
   reactive_values <- reactiveValues(participante_cnpj = NULL)
@@ -265,7 +267,9 @@ function(input, output, session) {
   })
 
   output$conluios_plot <- renderForceNetwork({
-    visualiza_conluios()
+    withProgress(message = "Carregando...", value = 0, {
+      visualiza_conluios()
+    })
   })
 
 
@@ -282,8 +286,8 @@ function(input, output, session) {
     participante_socios <- filter(socios, nu_cpfcnpj == participante_cnpj)
       
     div(id = "div_cnpj_info",
-        h3(strong("Informações do participante")),
-        p(),
+        #h3(strong("Informações do licitante")),
+        #p(),
         p(strong("Nome: "), participante$nome),
         p(strong("CNPJ: "), participante_cnpj),
         p(strong("Sócios: "), str_c(participante_socios$socio_nome,
@@ -296,8 +300,9 @@ function(input, output, session) {
         p(strong("Inidoneidade: "), participante$tipo_sancao),
         p(strong("Atividade econômica primária: "),
           participante$subclasse_cnae),
-        hr(),
-        h4(strong("Tabela de coparticipações")))
+        hr()#,
+        #h4(strong("Tabela de coparticipações"))
+        )
   })
 
   output$participante_table_ui <- renderUI({
@@ -316,6 +321,7 @@ function(input, output, session) {
                                   coparticipacoes, participantes_stats, socios),
         rownames = FALSE, selection = "none",
         options = list(pageLength = 20,
+                       fixedHeader = TRUE,
                        lengthMenu = list(c(20, 50, 100, -1),
                                          list("20", "50", "100", "Tudo")),
                        language = list(
@@ -324,11 +330,11 @@ function(input, output, session) {
                        buttons = list('copy', 'csv', 'excel')#,
                        #columnDefs = list(list(visible = FALSE, targets = 7))
         ),
-        extensions = "Buttons",
+        extensions = c("Buttons", "FixedHeader", "Responsive"),
         colnames = c("Nome do coparticipante" = "nome",
                      "CNPJ" = "nu_cpfcnpj_coparticipante",
                      "Qtd. coparticipacoes" = "n_coparticipacoes",
-                     "Vitorias do participante" = "n_vitorias_participante",
+                     "Vitorias do licitante" = "n_vitorias_participante",
                      "Vitorias do coparticipante" = "n_vitorias_coparticipante",
                      "Socios do coparticipante" = "socios_nomes",
                      "Mesmo socio" = "mesmo_socio"),
@@ -338,6 +344,68 @@ function(input, output, session) {
       backgroundColor = styleEqual("Sim", "#ffcccc")
     )
   )
+  
+  output$participacoes_table_ui <- renderUI({
+    if (!is.null(reactive_values$participante_cnpj) &&
+        reactive_values$participante_cnpj != "") {
+      DT::dataTableOutput("participacoes_table")
+    } else {
+      return("")
+    }
+  })
+  
+  output$participacoes_table <- DT::renderDataTable(
+    DT::datatable(
+      filtra_licitacoes(reactive_values$participante_cnpj, participantes,
+                        licitacoes, propostas) %>%
+        mutate(n_proposta_vencedora_str = paste(n_proposta_vencedora, "de",
+                                                n_proposta_total)) %>%
+        select(de_ugestora, de_tipolicitacao, nu_licitacao,
+               n_proposta_vencedora_str, vl_proposta_vencedora, dt_homologacao,
+               de_tipoobjeto, de_obs) %>%
+        arrange(desc(vl_proposta_vencedora)),
+      filter = 'bottom', rownames = FALSE, selection = "none",
+      options = list(pageLength = 20,
+                     fixedHeader = TRUE,
+                     lengthMenu = list(c(20, 50, 100, -1),
+                                       list("20", "50", "100", "Tudo")),
+                     language = list(
+                       url = "http://cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json"),
+                     dom = 'T<"clear">lBfrtip',
+                     buttons = list('copy', 'csv', 'excel')#,
+                     #columnDefs = list(list(visible = FALSE, targets = 7))
+      ),
+      extensions = c("Buttons", "FixedHeader", "Responsive"),
+      colnames = c("Unidade Gestora" = "de_ugestora",
+                   "Tipo Licitacao" = "de_tipolicitacao",
+                   "Numero Licitacao" = "nu_licitacao",
+                   "Qtd. Itens Vencidos" = "n_proposta_vencedora_str",
+                   "Valor Itens Vencidos" = "vl_proposta_vencedora",
+                   "Data Homologacao" = "dt_homologacao",
+                   "Tipo Objeto" = "de_tipoobjeto",
+                   "Observacao" = "de_obs"),
+      escape = FALSE
+    ) %>% formatCurrency(5, "R$", mark = ".", dec.mark = ",")
+  )
+  
+  output$tp_licitacao_plot <- renderPlotly({
+    participacoes <- filtrar_participacoes(reactive_values$participante_cnpj,
+                                           participantes)
+    
+    tp_licitacao_freq <- participacoes %>%
+      rename(TipoLicitacao = de_tipolicitacao) %>%
+      group_by(nu_cpfcnpj, TipoLicitacao) %>%
+      summarise(Frequencia = n())
+    
+    p <- ggplot(tp_licitacao_freq, aes(TipoLicitacao, Frequencia,
+                                       fill = TipoLicitacao)) +
+         geom_bar(stat = "identity") +
+         coord_flip() +
+         ggtitle("Qtd. de participações por tipo de licitação") +
+         #theme_fivethirtyeight() +
+         theme(legend.position="none", axis.title = element_blank())
+    ggplotly(p, tooltip=c("x", "y"))
+  })
   
   observeEvent(input$print, {
     js$winprint()
