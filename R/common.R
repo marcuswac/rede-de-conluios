@@ -28,35 +28,21 @@ read_csv_from_tce <- function(file_name, field_sep = "|", line_sep = "\n") {
 carrega_dados_licitacao <- function(
   file = "data/TCE-PB-SAGRES-Licitacao_Esfera_Municipal.txt") {
   data <- read_delim(file, delim = "|") %>%
-    mutate(tp_Licitacao = as.character(tp_Licitacao),
-           vl_Licitacao = as.numeric(vl_Licitacao))
-  names(data) <- tolower(names(data))
-
+    mutate(tp_Licitacao = as.character(tp_Licitacao))
   return(data)
 }
 
 carrega_dados_propostas <- function(
   file = "data/TCE-PB-SAGRES-Propostas_Licitacao_Esfera_Municipal.txt") {
   data <- read_delim(file, delim = "|") %>%
-    mutate(tp_licitacao = as.character(tp_licitacao),
-           vl_ofertado = as.numeric(vl_ofertado),
-           cd_ugestora = as.character(cd_ugestora))
+    mutate(tp_licitacao = as.character(tp_licitacao))
   return(data)
 }
 
 carrega_dados_participantes <- function(
   file = "data/TCE-PB-SAGRES-Participantes_Licitacao_Esfera_Municipal.txt") {
   data <- read_delim(file, delim = "|") %>%
-    mutate(tp_licitacao = as.character(tp_licitacao),
-           cd_ugestora = as.character(cd_ugestora))
-  return(data)
-}
-
-carrega_dados_empenhos <- function(
-  file = "data/TCE-PB-SAGRES-Empenhos_Esfera_Municipal.txt") {
-  data <- read_delim(file, delim = "|")
-  names(data) <- tolower(names(data))
-  
+    mutate(tp_licitacao = as.character(tp_licitacao))
   return(data)
 }
 
@@ -143,44 +129,4 @@ get_coparticipantes <- function(participante_cnpj, coparticipacoes) {
   }
   
   return(coparticipacoes_filt)
-}
-
-filtra_licitacoes <- function(participante_cnpj, participantes, licitacoes,
-                              propostas) {
-  if (is.null(participante_cnpj) || participante_cnpj == "") {
-    return(data.frame())
-  }
-  
-  licitacoes_filt <- participantes %>%
-    filter(nu_cpfcnpj == participante_cnpj) %>%
-    left_join(propostas) %>%
-    group_by(cd_ugestora, de_ugestora, tp_licitacao, de_tipolicitacao,
-             nu_licitacao) %>%
-    mutate(n_proposta_total = sum(de_situacaoproposta == "Vencedora")) %>%
-    group_by(cd_ugestora, de_ugestora, tp_licitacao, de_tipolicitacao,
-             nu_licitacao, n_proposta_total, nu_cpfcnpj) %>%
-    summarise(
-      n_proposta_vencedora = sum(de_situacaoproposta == "Vencedora"),
-      vl_proposta_vencedora = sum((de_situacaoproposta == "Vencedora") *
-                                  qt_ofertada * vl_ofertado)
-    ) %>%
-    left_join(licitacoes) %>%
-    ungroup() %>%
-    select(nu_cpfcnpj, de_ugestora, de_tipolicitacao, nu_licitacao,
-           n_proposta_vencedora, n_proposta_total,
-           vl_proposta_vencedora, dt_homologacao, de_tipoobjeto, de_obs)
-  
-  return(licitacoes_filt)
-}
-
-tem_mesmo_socio <- function(nu_cpfcnpj_1, nu_cpfcnpj_2, socios_list) {
-  map2_lgl(nu_cpfcnpj_1, nu_cpfcnpj_2,
-           function(x, y) {
-             socios_nomes_1 <- socios_list[[x]]$socio_nome
-             socios_nomes_2 <- socios_list[[y]]$socio_nome
-             ifelse(is.character(socios_nomes_1) && is.character(socios_nomes_2),
-                    any(map_lgl(socios_nomes_1, ~ any(.x == socios_nomes_2))),
-                    FALSE)
-           }
-  )
 }

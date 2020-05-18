@@ -1,6 +1,5 @@
 library(DT, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(htmlwidgets, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
-library(plotly, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(networkD3, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(shiny, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
 library(shinyBS, warn.conflicts =  FALSE, quietly = TRUE, verbose = FALSE)
@@ -89,22 +88,10 @@ shinyUI(
                 useShinyjs(),
                 extendShinyjs(text = jsCode),
                 fluidRow(
-                  column(10, box(uiOutput("participante_info"),
-                                title = "Informações do participante",
-                                width = NULL)),
-                  column(2, actionButton("print", "Imprimir"), style="padding:20px;")
+                  column(8, uiOutput("participante_info")),
+                  column(4, actionButton("print", "Imprimir"), style="padding:20px;")
                 ),
-                tabsetPanel(
-                  tabPanel("Coparticipações", hr(),
-                           uiOutput("participante_table_ui")),
-                  tabPanel("Licitações",
-                           box(plotlyOutput("tp_licitacao_plot",
-                                        width = "100%", height = "300px"),
-                               #title = "Participações por tipo de licitação",
-                               width = 8),
-                           hr(),
-                           uiOutput("participacoes_table_ui"))
-                )
+                uiOutput("participante_table_ui")
         )
       )
     )
